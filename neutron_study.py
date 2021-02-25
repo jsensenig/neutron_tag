@@ -40,12 +40,8 @@ def load_dataset(event_df: pd.DataFrame, feature_list: List[str], pos_list: List
     graph = []
 
     nevents = len(df.groupby(level='entry'))
+    # Truth classification
     df = _tag_ancestor(df, 2112)
-    print("Columns", df.columns)
-    # Convert the PDG code to classes {0, ..., N}
-    le = LabelEncoder()
-    df['pdg'] = le.fit_transform(df.reco_all_SpHit_pdg)
-    _print_label_map(le)
 
     # Each event is a graph
     for evt in range(0, nevents):
@@ -53,18 +49,21 @@ def load_dataset(event_df: pd.DataFrame, feature_list: List[str], pos_list: List
         evt_df = df.loc[evt]
         # Node features x, y, z, SADC, etc
         node_features = torch.FloatTensor(evt_df[pos_list + feature_list].values)
+
         # Create the edge indices
-        target_nodes = evt_df.index.values[1:]  # 1...M nodes
-        source_nodes = evt_df.index.values[:-1] # 0...M-1 nodes
-        edge_index = torch.LongTensor([source_nodes, target_nodes])
+        if cluster == 'knn': # edges via KNN
+            edge_index = knn_graph(x=node_features, k=k)
+        elif cluster == 'radius': # edges via distance
+            edge_index = radius_graph(x=node_features, r=r)
+        else: # edges via simple node index shift by 1 e.g. 0<-->1
+            target_nodes = evt_df.index.values[1:]  # 1...M nodes
+            source_nodes = evt_df.index.values[:-1]  # 0...M-1 nodes
+            edge_index = torch.LongTensor([source_nodes, target_nodes])
+
         position = torch.FloatTensor(evt_df[pos_list].values)
         edge_attr = position
+        # Truth labels
         y = torch.LongTensor(evt_df.Isneutron.values)
-
-        if cluster == 'knn':
-            edge_index = knn_graph(x=node_features, k=k)
-        if cluster == 'radius':
-            edge_index = radius_graph(x=node_features, r=r)
 
         data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=y, pos=position)
         graph.append(data)
