@@ -23,17 +23,11 @@ event_df = ns._tag_ancestor(event_df, 2112)
 test_loader = DataLoader(dataset=test_list, batch_size=1)
 print("Loader", test_loader)
 
-model = gcn_model.Net()
-optimizer = torch.optim.Adam([
-    dict(params=model.conv1.parameters(), weight_decay=5e-4),
-    dict(params=model.conv2.parameters(), weight_decay=5e-4),
-    dict(params=model.conv3.parameters(), weight_decay=5e-4),
-    dict(params=model.conv4.parameters(), weight_decay=0)
-], lr=0.01)  # Only perform weight-decay on first convolution.
+model = gcn_model.Net(num_features=4, num_classes=2, hidden_channels=64, num_layers=4)
+optimizer = torch.optim.Adam([dict(params=model.convs.parameters(), weight_decay=0.01)], lr=0.01)
 
 
 # Load the saved model
-model = gcn_model.Net()
 model.load_state_dict(torch.load("models/model.pt"))
 model.eval()
 

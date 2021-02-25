@@ -10,7 +10,7 @@ labels = ["reco_all_SpHit_pdg", "reco_all_SpHit_mompdg", "reco_all_SpHit_gmompdg
 position = ["reco_all_SpHit_X", "reco_all_SpHit_Y", "reco_all_SpHit_Z"]
 features = ["reco_all_SpHit_sadc"]
 train_file = 'data/sps_hitgmom.root'
-test_file = 'data/test_sps_hitgmom.root'
+test_file = 'data/sps_rad.root'
 
 # load data
 train_list = gcn_model.load_data(file_name=train_file, tree_name="trkUtil/points;1", features=features, position=position, labels=labels)
@@ -19,13 +19,9 @@ test_list = gcn_model.load_data(file_name=test_file, tree_name="trkUtil/points;1
 train_loader = DataLoader(dataset=train_list, batch_size=5)
 test_loader = DataLoader(dataset=test_list, batch_size=5)
 
-model = gcn_model.Net()
-optimizer = torch.optim.Adam([
-    dict(params=model.conv1.parameters(), weight_decay=5e-4),
-    dict(params=model.conv2.parameters(), weight_decay=5e-4),
-    dict(params=model.conv3.parameters(), weight_decay=5e-4),
-    dict(params=model.conv4.parameters(), weight_decay=0)
-], lr=0.01)  # Only perform weight-decay on first convolution.
+model = gcn_model.Net(num_features=4, num_classes=2, hidden_channels=16, num_layers=4)
+
+optimizer = torch.optim.Adam([dict(params=model.convs.parameters(), weight_decay=0.01)], lr=0.01)
 
 best_val_acc = test_acc = 0
 for epoch in range(1, 21):
@@ -37,4 +33,6 @@ for epoch in range(1, 21):
           format(epoch, loss, train_acc, test_acc))
 
 # Save our model
-torch.save(model.state_dict(), "models/model.pt")
+model_name = 'models/model.pt'
+print("Saving model:", model_name)
+torch.save(model.state_dict(), model_name)

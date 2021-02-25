@@ -7,27 +7,32 @@ import neutron_study as ns
 
 
 class Net(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, num_features: int, num_classes: int, hidden_channels: int, num_layers: int):
         super(Net, self).__init__()
-        num_features = 4
-        num_classes = 2
-        self.conv1 = GCNConv(num_features, 16)
-        self.conv2 = GCNConv(16, 16)
-        self.conv3 = GCNConv(16, 16)
-        self.conv4 = GCNConv(16, num_classes)
-        # self.conv1 = ChebConv(data.num_features, 16, K=2)
-        # self.conv2 = ChebConv(16, data.num_features, K=2)
+        self.num_features = num_features
+        self.num_classes = num_classes
+        self.hidden_channels = hidden_channels
+        self.num_layers = num_layers
+
+        # Create the conv layers
+        self.convs = torch.nn.ModuleList()
+        self.convs.append(GCNConv(self.num_features, self.hidden_channels))
+        for layer in range(self.num_layers-2):
+            self.convs.append(GCNConv(self.hidden_channels, self.hidden_channels))
+        self.convs.append(GCNConv(self.hidden_channels, self.num_classes))
 
     def forward(self, data):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        x = F.relu(self.conv1(x=x, edge_index=edge_index))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv2(x=x, edge_index=edge_index))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv3(x=x, edge_index=edge_index))
-        x = F.dropout(x, training=self.training)
-        x = self.conv4(x=x, edge_index=edge_index)
+
+        for conv in self.convs:
+            if conv is self.convs[-1]: # last one
+                x = conv(x=x, edge_index=edge_index)
+                break
+            x = F.relu(conv(x=x, edge_index=edge_index))
+            x = F.dropout(x, training=self.training)
+
         return F.log_softmax(x, dim=1)
+
 
 def train(model, train_loader, optimizer):
     model.train()
@@ -52,6 +57,7 @@ def test(model, test_loader):
         correct += pred.eq(data.y).sum().item() / len(data.y)
 
     return pred, correct / len(test_loader)
+
 
 def load_data(file_name: str, tree_name: str, features: List[str], position: List[str],
               labels: List[str], df_only: bool = False):
