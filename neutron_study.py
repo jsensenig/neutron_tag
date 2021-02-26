@@ -30,7 +30,6 @@ def _tag_ancestor(df: pd.DataFrame, pdg: int):
 
 
 def load_dataset(event_df: pd.DataFrame, feature_list: List[str], pos_list: List[str], cluster: str, k: int, r: float):
-    # ADD test_mask=[2708], train_mask=[2708], val_mask=[2708] -- see Planetoid dataset
     """
     Args:
         event_df (panda.DataFrame): Dataframe of data to be used
@@ -39,14 +38,13 @@ def load_dataset(event_df: pd.DataFrame, feature_list: List[str], pos_list: List
     df = event_df
     graph = []
 
-    nevents = len(df.groupby(level='entry'))
-    # Truth classification
+    # Add bool column, True if spacepoint has neutron ancestor
     df = _tag_ancestor(df, 2112)
 
+    n_event = 0
     # Each event is a graph
-    for evt in range(0, nevents):
-        # Make a dataframe for each event
-        evt_df = df.loc[evt]
+    for _, evt_df in df.groupby(level=0):
+
         # Node features x, y, z, SADC, etc
         node_features = torch.FloatTensor(evt_df[pos_list + feature_list].values)
 
@@ -67,5 +65,7 @@ def load_dataset(event_df: pd.DataFrame, feature_list: List[str], pos_list: List
 
         data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=y, pos=position)
         graph.append(data)
+        n_event += 1
 
+    print("Loaded", n_event, "events")
     return graph

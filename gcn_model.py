@@ -70,4 +70,4 @@ def load_data(file_name: str, tree_name: str, features: List[str], position: Lis
     if df_only:
         return events
 
-    return ns.load_dataset(event_df=events, feature_list=features, pos_list=position, cluster='knn', k=4, r=1)
+    return ns.load_dataset(event_df=events, feature_list=features, pos_list=position, cluster='knn', k=6, r=1)
